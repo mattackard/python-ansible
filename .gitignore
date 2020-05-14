@@ -1,0 +1,5 @@
+# terraform temp folder
+.terraform
+
+# ansible inventories
+*.ini
