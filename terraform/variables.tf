@@ -6,12 +6,20 @@ variable "region" {
   default = "us-west-1"
 }
 
-variable "instance" {
+variable "master_instance" {
+  default = "t2.medium"
+}
+
+variable "worker_instance" {
   default = "t2.nano"
 }
 
-variable "instance_count" {
+variable "master_instance_count" {
   default = "1"
+}
+
+variable "worker_instance_count" {
+  default = "2"
 }
 
 variable "public_key" {

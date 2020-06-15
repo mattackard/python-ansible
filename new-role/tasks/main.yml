@@ -1,0 +1,82 @@
+---
+- name: Use apt with HTTPS
+  apt:
+    state: present
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg-agent
+      - software-properties-common
+
+- name: Add Docker GPG Key
+  apt_key:
+    url: https://download.docker.com/linux/debian/gpg
+    state: present
+
+- name: Get docker apt repository
+  apt_repository:
+    repo: "deb https://download.docker.com/linux/debian buster stable"
+    state: present
+
+- name: Update apt Cache
+  apt:
+    update_cache: yes
+    force_apt_get: yes
+
+- name: Wait for apt lock
+  shell: while fuser /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done;
+
+- name: Install docker-ce
+  apt:
+    name: docker-ce
+    state: latest
+    force_apt_get: yes
+
+- name: Install Docker python module
+  apt:
+    name: "python-docker"
+
+- name: Reload systemctl and restart kubelet
+  service:
+    name: docker
+    state: started
+
+- name: Add k8s GPG Key
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    state: present
+
+- name: Get k8s debian package
+  apt_repository:
+    repo: "deb https://apt.kubernetes.io/ kubernetes-xenial main"
+    state: present
+
+- name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
+  shell: |
+    swapoff -a
+  register: swapped
+  # ignore_errors: true
+  failed_when: swapped.rc != 255 and swapped.rc != 0
+
+- name: Disable SWAP in fstab since kubernetes can't work with swap enabled (2/2)
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+
+- name: Install kubeadm, kubelet, and kubectl
+  apt:
+    state: present
+    name:
+      - kubeadm
+      - kubectl
+      - kubelet
+
+- name: Reload systemctl and restart kubelet
+  service:
+    name: kubelet
+    state: restarted
+
+- name: Enabling Bridge Firewall Rule
+  shell: "echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables"

@@ -1,0 +1,30 @@
+---
+- hosts: master
+  become: yes
+  vars_files:
+    - env_variables
+  tasks:
+    - name: Pulling images required for setting up a Kubernetes cluster
+      shell: kubeadm config images pull
+
+    - name: Initializing Kubernetes cluster
+      shell: kubeadm init # --apiserver-advertise-address {{ad_addr}} --pod-network-cidr={{cidr_v}}
+
+    - name: Store join command in file
+      shell: kubeadm token create --print-join-command
+      register: output
+
+    - name: Storing Logs and Generated token for future purpose.
+      become: no
+      local_action: copy content={{ output.stdout }} dest={{ token_file }}
+
+    - name: Copying required files
+      shell: |
+        mkdir -p $HOME/.kube
+        sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+        sudo chown $(id -u):$(id -g) $HOME/.kube/config
+      args:
+        warn: no
+
+    - name: Install Network Add-on
+      command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
